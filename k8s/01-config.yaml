@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: default
+data:
+  DB_HOST: "db-service"
+  DB_NAME: "nagp_db"
+  DB_USER: "postgres"
+  DB_PORT: "5432"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+  namespace: default
+type: Opaque
+data:
+  # Password is 'nagp2026' encoded in standard base64
+  DB_PASSWORD: "bmFncDIwMjY="
