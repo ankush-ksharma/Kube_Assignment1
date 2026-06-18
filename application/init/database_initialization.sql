@@ -2,8 +2,8 @@ CREATE TABLE IF NOT EXISTS NAGAP_USER_INFO(
     id SERIAL PRIMARY KEY,
     candidate_name VARCHAR(100) NOT NULL,
     technology_band VARCHAR(100) NOT NULL,
-    status VARCHAR(100) NOT NULL,
-)
+    status VARCHAR(100) NOT NULL
+);
 
 
 INSERT INTO NAGAP_USER_INFO (candidate_name, technology_band, status) VALUES
