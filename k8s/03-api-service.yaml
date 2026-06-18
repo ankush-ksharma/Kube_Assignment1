@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: flask-api
-        image: ankushshwork/api-service:v2
+        image: ankushshwork/api-service:v3
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
