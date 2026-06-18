@@ -1,8 +1,6 @@
-git ## Requirement Understanding
-The objective is to deploy a containerized, cloud-native application using:
-- Python Flask
-- PostgreSQL
-- Kubernetes
+## Requirement Understanding
+Deploy a containerized, cloud-native application using:
+API + Database on  Kubernetes
 
 The system must prioritize:
 - High availability  
@@ -16,38 +14,44 @@ The system must prioritize:
 - Persistent storage is provisioned via the cluster's default `StorageClass`.
 
 ## Solution Overview
-The application follows a **3-tier cloud-native architecture**:
-
 - A **LoadBalancer Ingress** routes external traffic.
 - Traffic hits the **API Service**, which uses connection pooling.
 - The API interacts with a **PostgreSQL StatefulSet**.
 - Configuration is managed using `ConfigMaps` and `Secrets`.
 
-This ensures:
-- Portability  
-- Security  
-- Environment independence  
+
+
+# Justification for Resources Utilized
+
+## StatefulSet
+- Ensures stable network identity
+- Supports persistent storage for database
+
+## HPA (Horizontal Pod Autoscaler)
+- Scales based on real-time demand
+- Optimizes infrastructure cost (FinOps)
+
+## ConfigMaps & Secrets
+- Separates configuration from code
+- Improves portability and security
+
+## Readiness Probes
+- Prevents traffic routing to unready pods
+- Enables zero-downtime deployments
+
+## 1Gi Persistent Disk
+- Balanced choice between:
+  - Data durability  
+  - Cost efficiency  
 
 ---
 
 # My Approach to the Solution
 
-## Step 1: Creating the Database
-The `init.sql` file serves as the database bootstrap mechanism.
+## Step 1: Creting the Python based Application
+I created the python application and tested it using a docker-compose in local WSL.
+Once the appiation was working, I built the docker image and pushed it to Docker HUB
 
-- **Logic:**  
-  The database must include a table with 5–10 records at startup.
-
-- **Mechanism:**  
-  The SQL script is mounted to:
-  ```
-  /docker-entrypoint-initdb.d
-  ```
-  PostgreSQL executes it automatically during first initialization.
-
----
-
-## Step 2: Creating the API Application
 A Python Flask application was built for simplicity and performance.
 
 - **app.py:**  
@@ -61,7 +65,7 @@ A Python Flask application was built for simplicity and performance.
 
 ---
 
-## Step 3: Build and Push Docker Images
+## Step 2: Build and Push Docker Images
 
 ### Build Image
 ```bash
@@ -72,6 +76,26 @@ docker build -t ankushshwork/api-service:v2 .
 ```bash
 docker push ankushshwork/api-service:v2
 ```
+
+---
+## Step 3: Creating the Database in Kubernetes
+The database initialization script is defined as a **ConfigMap** in the Kubernetes manifest (`02-database.yaml`).
+
+- **Logic:**  
+  The database must include a table with 5–10 records at startup.
+
+- **Mechanism:**  
+  - The init script is embedded in a ConfigMap named `db-init-script`
+  - The ConfigMap is mounted as a volume to:
+    ```
+    /docker-entrypoint-initdb.d
+    ```
+  - PostgreSQL executes it automatically during first initialization
+  
+- **Implementation:**  
+  The ConfigMap contains SQL commands to:
+  - Create the `NAGAP_USER_INFO` table
+  - Insert 10 sample user records with technology bands and status
 
 ---
 
@@ -96,9 +120,14 @@ kubectl apply -f k8s/01-config-secrets.yaml
 
 ## Step 5: Persistent Database Tier
 
-PostgreSQL deployed using **StatefulSet**.
+PostgreSQL deployed using **StatefulSet** with integrated initialization.
 
 ### Key Features
+
+- **Initialization Script**
+  - ConfigMap `db-init-script` contains the SQL initialization script
+  - Mounted to `/docker-entrypoint-initdb.d` for automatic execution
+  - Creates table and inserts 10 user records on first startup
 
 - **Persistence**
   - Uses `volumeClaimTemplates`
@@ -115,6 +144,11 @@ PostgreSQL deployed using **StatefulSet**.
 ```bash
 kubectl apply -f k8s/02-database.yaml
 ```
+
+This manifest includes:
+- ConfigMap with database initialization script
+- StatefulSet for PostgreSQL
+- ClusterIP Service for internal communication
 
 ---
 
@@ -157,25 +191,3 @@ kubectl apply -f k8s/04-ingress-hpa.yaml
 
 ---
 
-# Justification for Resources Utilized
-
-## StatefulSet
-- Ensures stable network identity
-- Supports persistent storage for database
-
-## HPA (Horizontal Pod Autoscaler)
-- Scales based on real-time demand
-- Optimizes infrastructure cost (FinOps)
-
-## ConfigMaps & Secrets
-- Separates configuration from code
-- Improves portability and security
-
-## Readiness Probes
-- Prevents traffic routing to unready pods
-- Enables zero-downtime deployments
-
-## 1Gi Persistent Disk
-- Balanced choice between:
-  - Data durability  
-  - Cost efficiency  
